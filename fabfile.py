@@ -1,8 +1,13 @@
 from fabric.api import local
 
-def prepare_deploy():
+def commit():
     local("git add -p && git commit")
+
+def push():
     local("git push")
 
 
+def prepare_deploy():
+    commit()
+    push()
 
