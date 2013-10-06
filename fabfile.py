@@ -16,12 +16,6 @@ VOLDEMORT_HOME="/opt/voldemort"
 
 
 
-def test():
-    with settings(warn_only=True):
-        result = local('./manage test my_app', capture=True)
-    if result.failed and not confirm("Tests failed. Continue"):
-        abort("Aborting")
-
 def commit():
     local("git add -p && git commit")
 
@@ -35,30 +29,32 @@ def prepare_deploy():
     push()
 
 
-def  deploy():
+def  deploy_bin():
     
     with settings(warn_only=True):
         sudo("mkdir -p %s" % VOLDEMORT_HOME)
         sudo("useradd voldemort -d %s " % VOLDEMORT_HOME )
-        run("rm -rf %s" % tmp)
-        
-        run("mkdir -p %s" % tmp)
+        put("%s/*" % binarystore, VOLDEMORT_HOME)
 
         sudo("chown -R voldemort.vagrant %s" % VOLDEMORT_HOME)
         sudo("chmod g+w %s" % VOLDEMORT_HOME)
+
         sudo("rm -rf %s/config" % VOLDEMORT_HOME)
-        
-        run("git clone https://github.com/elliottucker/vdmt.git %s" % tmp)
-        with cd(tmp):
-            run("mv config/ %s/" % VOLDEMORT_HOME)
+
+def deploy_config():
+    run("rm -rf %s" % tmp)        
+    run("mkdir -p %s" % tmp)
+    run("git clone https://github.com/elliottucker/vdmt.git %s" % tmp)
+    with cd(tmp):
+        run("mv config/ %s/" % VOLDEMORT_HOME)
 
     # checkout config
 
 def start():
     with cd(VOLDEMORT_HOME):
-        sudo("sh bin/voldemort-server.sh config/cluster > /tmp/voldemort.log")
+        sudo("bin/voldemort-server.sh config/cluster > /tmp/voldemort.log &")
         
-def setup_host():
+def setup():
     # make sure git is installed.
     with settings(warn_only=True):
         if run("git  --version").failed:
