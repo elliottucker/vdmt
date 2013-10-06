@@ -10,7 +10,11 @@ env.user = 'vagrant'
 env.password= 'vagrant'
 env.key_filename = "~/.ssh/key_1.pem"
 keyname = "key_1.pub"
-keydir = '/home/vagrant/keys'
+tmp = '/tmp/vdmt'
+binarystore = '~/Projects/Vold'
+VOLDEMORT_HOME="/opt/voldemort"
+
+
 
 def test():
     with settings(warn_only=True):
@@ -29,32 +33,43 @@ def prepare_deploy():
     test()
     commit()
     push()
-    prepare_host()
-    
-def  prepare_host():
 
+
+def  deploy():
+    
+    run("mkdir -p %s" % tmp)
+    # copy binaries
+    put("%s/voldemort/*" % (binarystore,VOLDEMORT_HOME))
+    run("git clone https://github.com/elliottucker/vdmt.git %s" % tmp)
+    with cd(tmp):
+        run("mv config/* %s/config/" % VOLDEMORT_HOME)
+        
+        
+    
+
+    # checkout config
+
+    
+def setup_host():
     # make sure git is installed.
     with settings(warn_only=True):
         if run("git  --version").failed:
             run("sudo apt-get install git -y")
 
-    # check keys        
-    with settings(warn_only=True):
-        if run("test -d %s" % keydir).failed:
-            run("git clone https://github.com/elliottucker/junk.git %s" % keydir)
-            run("mkdir -p ~/.ssh")
+    run("git clone https://github.com/elliottucker/vdmt.git %s" % tmp)
 
-        with  cd(keydir):
+    # check keys   
+    run("mkdir -p ~/.ssh")
+    with settings(warn_only=True), cd(tmp):
+        keystring= open(keyname,'r').read()
+        localkeyhash = md5(keystring).hexdigest()
+        remotekeyhash = run("md5sum %s | cut  -f 1 -d ' '" % keyname)
 
-            keystring= open(keyname,'r').read()
-            localkeyhash = md5(keystring).hexdigest()
-            remotekeyhash = run("md5sum %s | cut  -f 1 -d ' '" % keyname)
+        print "local %s  -  remote %s" % (localkeyhash,remotekeyhash)
 
-            print "local %s  -  remote %s" % (localkeyhash,remotekeyhash)
-            
-            if localkeyhash==remotekeyhash:
-                if append("~/.ssh/authorized_keys",keystring):
-                    print "key added"
+        if localkeyhash==remotekeyhash:
+            if append("~/.ssh/authorized_keys",keystring):
+                print "key added"
 
-            else:
-                abort("hashes don't match.  oops")
+        else:
+            abort("hashes don't match.  oops")
