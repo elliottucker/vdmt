@@ -30,7 +30,7 @@ def push():
 
 
 def prepare_deploy():
-    test()
+
     commit()
     push()
 
@@ -41,11 +41,13 @@ def  deploy():
         sudo("mkdir -p %s" % VOLDEMORT_HOME)
         sudo("useradd voldemort -d %s " % VOLDEMORT_HOME )
         run("rm -rf %s" % tmp)
+        
         run("mkdir -p %s" % tmp)
 
         sudo("chown -R voldemort.vagrant %s" % VOLDEMORT_HOME)
         sudo("chmod g+w %s" % VOLDEMORT_HOME)
-        #put("%s/*" % binarystore, VOLDEMORT_HOME)
+        sudo("rm -rf %s/config" % VOLDEMORT_HOME)
+        
         run("git clone https://github.com/elliottucker/vdmt.git %s" % tmp)
         with cd(tmp):
             run("mv config/ %s/" % VOLDEMORT_HOME)
@@ -54,19 +56,25 @@ def  deploy():
 
 def start():
     with cd(VOLDEMORT_HOME):
-        sudo("bin/voldemort-server.sh config/cluster > /tmp/voldemort.log")
+        sudo("sh bin/voldemort-server.sh config/cluster > /tmp/voldemort.log")
         
 def setup_host():
     # make sure git is installed.
     with settings(warn_only=True):
         if run("git  --version").failed:
-            run("sudo apt-get install git -y")
+            with settings(warn_only=False):
+                run("sudo apt-get install git -y")
+        if run("java -version").failed:
+            with settings(warn_only=False):
+                run("sudo apt-get update -y")
+                run("sudo apt-get install default-jre --fix-missing -y")
 
+    run("rm -rf %s" % tmp)
     run("git clone https://github.com/elliottucker/vdmt.git %s" % tmp)
 
     # check keys   
     run("mkdir -p ~/.ssh")
-    with settings(warn_only=True), cd(tmp):
+    with cd(tmp),settings(warn_only=True):
         keystring= open(keyname,'r').read()
         localkeyhash = md5(keystring).hexdigest()
         remotekeyhash = run("md5sum %s | cut  -f 1 -d ' '" % keyname)
